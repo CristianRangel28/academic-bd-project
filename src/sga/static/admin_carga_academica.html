@@ -7,6 +7,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <script src="api.js"></script>
     
     <style>
@@ -300,11 +303,13 @@
             <div class="nombre-colegio">[NOMBRE COLEGIO]</div>
             
             <div class="menu-nav">
-                <div class="menu-item" data-page="admin_dashboard.html">&bull; INICIO</div>
-                <div class="menu-item" data-page="admin_usuarios.html">&bull; GESTION DE USUARIOS</div>
-                <div class="menu-item" data-page="admin_matriculas.html">&bull; MATRICULAS ACADEMICAS</div>
-                <div class="menu-item active" data-page="admin_carga_academica.html">&bull; CARGA ACADEMICA Y HORARIOS</div>
-                <div class="menu-item" data-page="admin_reportes.html">&bull; REPORTES Y ESTADISTICAS GLOBALES</div>
+                <div class="menu-item" onclick="window.location='admin_inicio.html'">&bull; INICIO</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_usuarios.html'">&bull; GESTION DE USUARIOS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_matriculas.html'">&bull; MATRICULAS ACADEMICAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_materias.html'">&bull; MATERIAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_cursos.html'">&bull; CURSOS</div>
+                <div class="menu-item active">&bull; CARGA ACADEMICA Y HORARIOS</div>
+                <div class="menu-item" onclick="window.location='admin_reportes_y_estadisticas.html'">&bull; REPORTES Y ESTADISTICAS GLOBALES</div>
             </div>
         </div>
 
@@ -342,8 +347,26 @@
                         </select>
 
                         <select class="form-select" id="horarioSelect">
-                            <option value="">Lunes | 07:30 AM - 09:00 AM</option>
+                            <option value="">Seleccione Horario</option>
                         </select>
+
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+                            <label style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                                <input type="checkbox" class="dia-check" value="Lunes" checked> Lun
+                            </label>
+                            <label style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                                <input type="checkbox" class="dia-check" value="Martes" checked> Mar
+                            </label>
+                            <label style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                                <input type="checkbox" class="dia-check" value="Miércoles" checked> Mié
+                            </label>
+                            <label style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                                <input type="checkbox" class="dia-check" value="Jueves" checked> Jue
+                            </label>
+                            <label style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                                <input type="checkbox" class="dia-check" value="Viernes" checked> Vie
+                            </label>
+                        </div>
 
                         <button type="submit" class="btn-asignar-intensidad">Asignar Intensidad Horaria</button>
                     </form>
@@ -374,87 +397,133 @@
     const user = getUser();
     document.querySelector('.nombre-admin').textContent = user.nombre;
 
-    document.querySelectorAll('.menu-item').forEach(item => {
-        item.addEventListener('click', function() {
-            const page = this.dataset.page;
-            if (page) window.location.href = page;
-        });
-    });
-
     const docenteSelect = document.getElementById('docenteSelect');
+    const cursoSelect = document.getElementById('cursoSelect');
     const materiaSelect = document.getElementById('materiaSelect');
     const horarioSelect = document.getElementById('horarioSelect');
     const cargaBody = document.getElementById('cargaBody');
     const cargaForm = document.getElementById('cargaForm');
 
     async function loadDocentes() {
-        const docentes = await apiGet('/admin/usuarios?rol=docente');
-        docentes.forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d.id;
-            opt.textContent = d.nombre;
-            docenteSelect.appendChild(opt);
-        });
+        try {
+            const docentes = await apiGet('/admin/docentes');
+            docenteSelect.innerHTML = '<option value="">Seleccione Docente</option>';
+            docentes.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.teacher_id;
+                opt.textContent = d.nombre;
+                docenteSelect.appendChild(opt);
+            });
+        } catch (e) { console.error('Error cargando docentes:', e); }
+    }
+
+    async function loadCursos() {
+        try {
+            const cursos = await apiGet('/admin/cursos');
+            cursoSelect.innerHTML = '<option value="">Seleccione Curso</option>';
+            cursos.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.course_id;
+                opt.textContent = c.nombre;
+                cursoSelect.appendChild(opt);
+            });
+        } catch (e) { console.error('Error cargando cursos:', e); }
     }
 
     async function loadMaterias() {
-        const materias = await apiGet('/admin/materias');
-        materias.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m.id;
-            opt.textContent = m.nombre;
-            materiaSelect.appendChild(opt);
-        });
+        try {
+            const materias = await apiGet('/admin/materias');
+            materiaSelect.innerHTML = '<option value="">Seleccione Materia</option>';
+            materias.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = m.nombre;
+                materiaSelect.appendChild(opt);
+            });
+        } catch (e) { console.error('Error cargando materias:', e); }
+    }
+
+    async function loadHorarios() {
+        try {
+            const horarios = await apiGet('/admin/horarios');
+            horarioSelect.innerHTML = '<option value="">Seleccione Horario</option>';
+            horarios.forEach(h => {
+                const opt = document.createElement('option');
+                opt.value = h.id;
+                opt.textContent = h.nombre;
+                opt.dataset.horaInicio = h.hora_inicio;
+                opt.dataset.horaFin = h.hora_fin;
+                horarioSelect.appendChild(opt);
+            });
+        } catch (e) { console.error('Error cargando horarios:', e); }
     }
 
     async function loadCarga() {
-        const carga = await apiGet('/admin/carga-academica');
-        cargaBody.innerHTML = '';
-        carga.forEach(c => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${c.docente_nombre}</td>
-                <td>${c.materia_nombre}</td>
-                <td>${c.horario}</td>
-                <td>
-                    <button class="btn-delete-action" data-id="${c.id}">
-                        <svg viewBox="0 0 24 24">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            <line x1="10" y1="11" x2="10" y2="17"></line>
-                            <line x1="14" y1="11" x2="14" y2="17"></line>
-                        </svg>
-                    </button>
-                </td>
-            `;
-            cargaBody.appendChild(tr);
-        });
+        try {
+            const carga = await apiGet('/admin/carga-academica');
+            cargaBody.innerHTML = '';
+            carga.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${c.docente_nombre || c.docente || ''}</td>
+                    <td>${c.curso || ''} / ${c.materia_nombre || c.materia || ''}</td>
+                    <td>${c.horario || ''}</td>
+                    <td>
+                        <button class="btn-delete-action" data-id="${c.id}">
+                            <svg viewBox="0 0 24 24">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                        </button>
+                    </td>
+                `;
+                cargaBody.appendChild(tr);
+            });
+        } catch (e) { console.error('Error cargando carga:', e); }
     }
 
     document.addEventListener('click', async e => {
         const btn = e.target.closest('.btn-delete-action');
         if (btn && btn.dataset.id) {
             if (confirm('¿Eliminar esta asignación?')) {
-                await apiDelete(`/admin/carga-academica/${btn.dataset.id}`);
-                loadCarga();
+                try {
+                    await apiDelete(`/admin/carga-academica/${btn.dataset.id}`);
+                    loadCarga();
+                } catch (e) { alert('Error: ' + e.message); }
             }
         }
     });
 
     cargaForm.addEventListener('submit', async e => {
         e.preventDefault();
+        const diasSel = Array.from(document.querySelectorAll('.dia-check:checked')).map(cb => cb.value);
+        if (!diasSel.length) { alert('Seleccione al menos un día'); return; }
+        const horarioOpt = horarioSelect.options[horarioSelect.selectedIndex];
         const data = {
             docente_id: docenteSelect.value,
+            curso_id: cursoSelect.value,
             materia_id: materiaSelect.value,
-            horario: horarioSelect.value
+            hora_inicio: horarioOpt.dataset.horaInicio,
+            hora_fin: horarioOpt.dataset.horaFin,
+            dias: diasSel,
         };
-        await apiPost('/admin/carga-academica', data);
-        loadCarga();
-        cargaForm.reset();
+        if (!data.docente_id || !data.curso_id || !data.materia_id || !data.hora_inicio) {
+            alert('Seleccione docente, curso, materia y horario');
+            return;
+        }
+        try {
+            await apiPost('/admin/carga-academica', data);
+            loadCarga();
+            cargaForm.reset();
+        } catch (e) { alert('Error: ' + e.message); }
     });
 
     loadDocentes();
+    loadCursos();
     loadMaterias();
+    loadHorarios();
     loadCarga();
 </script>
 </body>

@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Administrativo - GESTION DE USUARIOS (Cambiar Estado)</title>
+    <title>Panel Administrativo - GESTION DE USUARIOS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap" rel="stylesheet">
     <script src="api.js"></script>
-    
     <style>
         /* Estilos Base del Sistema */
         body {
@@ -18,10 +17,9 @@
             display: flex;
             height: 100vh;
             overflow: hidden;
-            position: relative;
         }
 
-        /* Barra Lateral Izquierda */
+        /* Barra Lateral Izquierda - Administrativo */
         .sidebar {
             width: 240px;
             background-color: #FFFFFF;
@@ -201,6 +199,7 @@
             width: 280px;
             box-sizing: border-box;
             outline: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
         }
 
         .custom-select {
@@ -212,34 +211,39 @@
             border: 1px solid #A6A6A6;
             border-radius: 8px;
             background-color: #FFFFFF;
+            cursor: pointer;
             appearance: none;
             background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
             background-repeat: no-repeat;
             background-position: right 15px center;
             background-size: 14px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
         }
 
         .select-rol { width: 170px; }
         .select-estado { width: 170px; }
 
         .btn-registrar-usuario {
-            background-color: #3BFF65;
+            background-color: #3BFF65; /* Verde neón llamativo */
             color: #000000;
             font-size: 15px;
             font-weight: 800;
             border: none;
             padding: 10px 22px;
             border-radius: 8px;
+            cursor: pointer;
             white-space: nowrap;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
 
-        /* Tabla de Usuarios */
+        /* Tabla Contenedora de Usuarios */
         .table-card-wrapper {
             background-color: #FFFFFF;
             border-radius: 15px;
+            padding: 0;
             width: 100%;
-            overflow: hidden;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
         }
 
         .users-table {
@@ -247,6 +251,7 @@
             border-collapse: collapse;
         }
 
+        /* Encabezado Celeste/Menta Claro */
         .users-table thead tr {
             background-color: #D5FFF2;
         }
@@ -256,39 +261,73 @@
             font-weight: 800;
             color: #000000;
             padding: 16px 10px;
+            text-align: center;
             border: 1px solid #CCCCCC;
         }
+
+        /* Proporciones de Columna */
+        .users-table th:nth-child(1) { width: 18%; }
+        .users-table th:nth-child(2) { width: 26%; }
+        .users-table th:nth-child(3) { width: 20%; }
+        .users-table th:nth-child(4) { width: 18%; }
+        .users-table th:nth-child(5) { width: 18%; }
 
         .users-table td {
             border: 1px solid #CCCCCC;
             padding: 25px 15px;
+            vertical-align: middle;
             text-align: center;
+            box-sizing: border-box;
             font-size: 15px;
             font-weight: 800;
             color: #000000;
         }
 
+        /* Óvalos de Roles */
         .badge-oval {
             border-radius: 30px;
             padding: 12px 25px;
+            font-size: 15px;
+            font-weight: 800;
             color: #FFFFFF;
             display: inline-block;
             min-width: 100px;
+            text-transform: capitalize;
         }
 
-        .badge-oval.estudiante { background-color: #657BFF; }
-        .badge-oval.docente { background-color: #C365FF; }
+        .badge-oval.estudiante {
+            background-color: #657BFF; /* Azul / Violeta suave */
+        }
 
+        .badge-oval.docente {
+            background-color: #C365FF; /* Morado claro */
+        }
+
+        .badge-oval.admin {
+            background-color: #FF8C42; /* Naranja */
+        }
+
+        /* Óvalos de Estados */
         .status-oval {
             border-radius: 30px;
             padding: 12px 25px;
+            font-size: 15px;
+            font-weight: 800;
+            color: #000000;
             display: inline-block;
             min-width: 100px;
+            text-transform: uppercase;
         }
 
-        .status-oval.activo { background-color: #4AFE6C; }
-        .status-oval.inactivo { background-color: #D9D9D9; }
+        .status-oval.activo {
+            background-color: #4AFE6C; /* Verde neón brillante */
+        }
 
+        .status-oval.inactivo {
+            background-color: #D9D9D9; /* Gris opaco */
+        }
+
+        /* Botones de Acción */
         .actions-cell-container {
             display: flex;
             align-items: center;
@@ -301,17 +340,19 @@
             height: 36px;
             border-radius: 50%;
             border: none;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 16px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         }
 
-        .action-circle-btn.edit { background-color: #FFE699; }
-        .action-circle-btn.refresh { background-color: #99B2FF; }
-        .action-circle-btn.delete { background-color: #FFA3A3; }
+        .action-circle-btn.edit { background-color: #FFE699; }      /* Amarillo */
+        .action-circle-btn.refresh { background-color: #99B2FF; }   /* Azul */
+        .action-circle-btn.delete { background-color: #FFA3A3; }    /* Rojo / Salmón */
 
-        /* Barra de Paginación */
+        /* Barra de Paginación Inferior */
         .pagination-footer {
             background-color: #FFFFFF;
             border-radius: 10px;
@@ -321,128 +362,39 @@
             justify-content: space-between;
             width: 100%;
             box-sizing: border-box;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
         }
 
-        .pagination-text { font-size: 14px; font-weight: 800; }
+        .pagination-text {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+        }
 
-        .pagination-nav-buttons { display: flex; gap: 10px; }
+        .pagination-nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
 
         .nav-arrow-btn {
-            background-color: #99B2FF;
+            background-color: #99B2FF; /* Azul claro de los botones de navegación */
             border: none;
             width: 28px;
             height: 28px;
             border-radius: 6px;
-            color: #FFFFFF;
-            font-weight: 800;
-        }
-
-        /* CAPA DEL MODAL INTERMITENTE (OVERLAY DE CAMBIO DE ESTADO) */
-        .modal-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.4); /* Capa oscura translúcida */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-        }
-
-        /* Tarjeta Contenedora del Dialogo */
-        .modal-container-card {
-            background-color: #FFFFFF;
-            border-radius: 15px;
-            width: 440px;
-            max-width: 90%;
-            padding: 35px 25px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-        }
-
-        /* Icono circular de actualización/refresco */
-        .modal-icon-circle {
-            width: 52px;
-            height: 52px;
-            background-color: #E2F0D9; /* Círculo de fondo claro suave */
-            border: 2px solid #A6A6A6;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-
-        .modal-title {
-            font-size: 22px;
-            font-weight: 800;
-            color: #595959;
-            margin: 0 0 15px 0;
-        }
-
-        .modal-body-text {
-            font-size: 13px;
-            font-weight: 800;
-            color: #7F7F7F;
-            line-height: 1.5;
-            margin: 0 0 25px 0;
-            padding: 0 15px;
-        }
-
-        /* Grupo de botones del Modal */
-        .modal-actions-wrapper {
-            display: flex;
-            gap: 20px;
-            width: 100%;
-            justify-content: center;
-        }
-
-        .btn-modal {
-            font-family: 'Open Sans', sans-serif;
-            font-size: 13px;
-            font-weight: 800;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
             cursor: pointer;
-            text-transform: uppercase;
-            min-width: 130px;
-        }
-
-        .btn-modal.volver {
-            background-color: #D9D9D9; /* Gris neutral */
-            color: #000000;
-        }
-
-        .btn-modal.desactivar {
-            background-color: #FF1A1A; /* Rojo brillante de alerta */
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: #FFFFFF;
+            font-size: 14px;
+            font-weight: 800;
         }
     </style>
 </head>
 <body>
 
-    <div class="modal-overlay">
-        <div class="modal-container-card">
-            <div class="modal-icon-circle">🔄</div>
-            <h3 class="modal-title">¿Cambiar estado del Usuario?</h3>
-            <p class="modal-body-text">
-                El usuario [USUARIO] cambiará a estado INACTIVO. Esto restringirá su acceso a la plataforma inmediatamente hasta que sea activado de nuevo.
-            </p>
-            <div class="modal-actions-wrapper">
-                <button class="btn-modal volver" onclick="window.location='admin_gestion_usuarios.html'">Volver</button>
-                <button class="btn-modal desactivar">Si, desactivar</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- Barra Lateral Izquierda -->
     <div class="sidebar">
         <div class="sidebar-top">
             <div class="avatar-colegio"></div>
@@ -451,15 +403,21 @@
             <div class="menu-nav">
                 <div class="menu-item" onclick="window.location='admin_inicio.html'">&bull; INICIO</div>
                 <div class="menu-item active" onclick="window.location='admin_gestion_usuarios.html'">&bull; GESTION DE USUARIOS</div>
-                <div class="menu-item" onclick="window.location='admin_matriculas.html'">&bull; MATRICULAS ACADEMICAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_matriculas.html'">&bull; MATRICULAS ACADEMICAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_materias.html'">&bull; MATERIAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_cursos.html'">&bull; CURSOS</div>
                 <div class="menu-item" onclick="window.location='admin_carga_academica.html'">&bull; CARGA ACADEMICA Y HORARIOS</div>
-                <div class="menu-item" onclick="window.location='admin_reportes.html'">&bull; REPORTES Y ESTADISTICAS GLOBALES</div>
+                <div class="menu-item" onclick="window.location='admin_reportes_y_estadisticas.html'">&bull; REPORTES Y ESTADISTICAS GLOBALES</div>
             </div>
         </div>
+
         <button class="btn-cerrar-sesion" onclick="logout()">CERRAR SESION</button>
     </div>
 
+    <!-- Contenedor Derecho Principal -->
     <div class="main-container">
+        
+        <!-- Header Superior -->
         <div class="header-top">
             <div class="titulo-vista">Gestion de usuarios</div>
             <div class="usuario-info-block">
@@ -471,18 +429,27 @@
             </div>
         </div>
 
+        <!-- Área de Contenido -->
         <div class="content-body">
             <div class="view-wrapper">
                 
+                <!-- Barra de controles y filtros -->
                 <div class="top-filter-bar">
                     <div class="filters-left-group">
                         <input type="text" class="search-user-input" placeholder="Buscar por nombre, documento o ID...">
-                        <select class="custom-select select-rol"><option>Rol: Todos</option></select>
-                        <select class="custom-select select-estado"><option>Estado: activos</option></select>
+                        
+                        <select class="custom-select select-rol">
+                            <option value="">Rol: Todos</option>
+                        </select>
+                        
+                        <select class="custom-select select-estado">
+                            <option value="">Estado: Todos</option>
+                        </select>
                     </div>
-                    <button class="btn-registrar-usuario">+ Registrar Usuario</button>
+                    <button class="btn-registrar-usuario" onclick="window.location='admin_registrar_usuario.html'">+ Registrar Usuario</button>
                 </div>
 
+                <!-- Tabla de Usuarios -->
                 <div class="table-card-wrapper">
                     <table class="users-table">
                         <thead>
@@ -494,50 +461,11 @@
                                 <th>Acciones</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr>
-                                <td>[Usuario / ID]</td>
-                                <td>[Nombre completo]</td>
-                                <td><div class="badge-oval estudiante">Estudiante</div></td>
-                                <td><div class="status-oval activo">ACTIVO</div></td>
-                                <td>
-                                    <div class="actions-cell-container">
-                                        <button class="action-circle-btn edit">✏️</button>
-                                        <button class="action-circle-btn refresh">🔄</button>
-                                        <button class="action-circle-btn delete">🗑️</button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>[Usuario / ID]</td>
-                                <td>[Nombre completo]</td>
-                                <td><div class="badge-oval docente">Docente</div></td>
-                                <td><div class="status-oval activo">ACTIVO</div></td>
-                                <td>
-                                    <div class="actions-cell-container">
-                                        <button class="action-circle-btn edit">✏️</button>
-                                        <button class="action-circle-btn refresh">🔄</button>
-                                        <button class="action-circle-btn delete">🗑️</button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>[Usuario / ID]</td>
-                                <td>[Nombre completo]</td>
-                                <td><div class="badge-oval estudiante">Estudiante</div></td>
-                                <td><div class="status-oval inactivo">INACTIVO</div></td>
-                                <td>
-                                    <div class="actions-cell-container">
-                                        <button class="action-circle-btn edit">✏️</button>
-                                        <button class="action-circle-btn refresh">🔄</button>
-                                        <button class="action-circle-btn delete">🗑️</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
+                        <tbody id="usersTableBody"></tbody>
                     </table>
                 </div>
 
+                <!-- Barra de Paginación -->
                 <div class="pagination-footer">
                     <div class="pagination-text">Mostrando N-N de NNN usuarios</div>
                     <div class="pagination-nav-buttons">
@@ -552,8 +480,120 @@
 
 <script>
     if (!isAuthenticated()) window.location.href = 'login.html';
+
     const user = getUser();
-    if (user) document.querySelector('.nombre-admin').textContent = user.nombre || user.username || user.name;
+    if (user) document.querySelector('.nombre-admin').textContent = user.nombre;
+
+    function applyFilters(data) {
+        const rol = document.querySelector('.select-rol').value;
+        const estado = document.querySelector('.select-estado').value;
+        let filtered = data;
+        if (rol) {
+            filtered = filtered.filter(u => u.rol === rol);
+        }
+        if (estado) {
+            const activo = estado === 'activo';
+            filtered = filtered.filter(u => u.estado === activo);
+        }
+        return filtered;
+    }
+
+    function renderUsers(usuarios) {
+        const tbody = document.getElementById('usersTableBody');
+        const filtered = applyFilters(usuarios);
+        document.querySelector('.pagination-text').textContent = `Mostrando 1-${filtered.length} de ${filtered.length} usuarios`;
+        tbody.innerHTML = filtered.map(u => {
+            const rolClass = u.rol === 'admin' ? 'admin' : (u.rol === 'docente' ? 'docente' : 'estudiante');
+            const estadoClass = u.estado ? 'activo' : 'inactivo';
+            const estadoText = u.estado ? 'ACTIVO' : 'INACTIVO';
+            return `<tr>
+                <td>${u.username}<br><small style="font-size:11px;color:#888;">${u.numero_documento}</small></td>
+                <td>${u.nombre_completo}</td>
+                <td><div class="badge-oval ${rolClass}">${u.rol}</div></td>
+                <td><div class="status-oval ${estadoClass}">${estadoText}</div></td>
+                <td>
+                    <div class="actions-cell-container">
+                        <button class="action-circle-btn edit" onclick="editarUsuario('${u.id}')">✏️</button>
+                        <button class="action-circle-btn refresh" onclick="cambiarEstado('${u.id}','${u.nombre_completo}')">🔄</button>
+                        <button class="action-circle-btn delete" onclick="eliminarUsuario('${u.id}','${u.nombre_completo}')">🗑️</button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="padding:30px;">Sin resultados</td></tr>';
+        }
+    }
+
+    let todosUsuarios = [];
+
+    async function loadUsers() {
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '<tr><td colspan="5" style="padding:30px;">Cargando...</td></tr>';
+        try {
+            const usuarios = await apiGet('/admin/usuarios');
+            todosUsuarios = usuarios;
+            renderUsers(usuarios);
+        } catch (e) {
+            console.error('Error cargando usuarios:', e);
+            tbody.innerHTML = '<tr><td colspan="5" style="padding:30px;">Sin datos de usuarios</td></tr>';
+        }
+    }
+
+    async function populateFilters() {
+        const rolSelect = document.querySelector('.select-rol');
+        const estadoSelect = document.querySelector('.select-estado');
+        if (!rolSelect || !estadoSelect) return;
+
+        const rolOpts = ['<option value="">Rol: Todos</option>'];
+        try {
+            const roles = await apiGet('/admin/roles');
+            roles.forEach(r => rolOpts.push(`<option value="${r.rol}">${r.nombre}</option>`));
+        } catch (e) {
+            rolOpts.push('<option value="admin">Administrativo</option><option value="docente">Docente</option><option value="estudiante">Estudiante</option>');
+        }
+        rolSelect.innerHTML = rolOpts.join('');
+
+        estadoSelect.innerHTML = '<option value="">Estado: Todos</option><option value="activo">Estado: Activos</option><option value="inactivo">Estado: Inactivos</option>';
+    }
+
+    document.querySelector('.select-rol').addEventListener('change', function() {
+        if (todosUsuarios.length) renderUsers(todosUsuarios);
+    });
+    document.querySelector('.select-estado').addEventListener('change', function() {
+        if (todosUsuarios.length) renderUsers(todosUsuarios);
+    });
+
+    async function editarUsuario(id) {
+        window.location.href = `admin_editar_usuario.html?id=${id}`;
+    }
+
+    async function cambiarEstado(id, nombre) {
+        if (confirm(`¿Cambiar estado del usuario ${nombre}?`)) {
+            try {
+                await apiPatch(`/admin/usuarios/${id}/estado`);
+                loadUsers();
+            } catch (e) { alert(e.message); }
+        }
+    }
+
+    async function eliminarUsuario(id, nombre) {
+        if (confirm(`¿Eliminar permanentemente al usuario ${nombre}?`)) {
+            try {
+                await apiDelete(`/admin/usuarios/${id}`);
+                loadUsers();
+            } catch (e) { alert(e.message); }
+        }
+    }
+
+    document.querySelector('.search-user-input').addEventListener('input', function() {
+        const filtro = this.value.toLowerCase();
+        document.querySelectorAll('#usersTableBody tr').forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(filtro) ? '' : 'none';
+        });
+    });
+
+    (async () => { await populateFilters(); loadUsers(); })();
 </script>
 </body>
 </html>

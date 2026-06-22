@@ -421,6 +421,8 @@
                 <div class="menu-item" onclick="window.location='admin_inicio.html'">&bull; INICIO</div>
                 <div class="menu-item" onclick="window.location='admin_gestion_usuarios.html'">&bull; GESTION DE USUARIOS</div>
                 <div class="menu-item" onclick="window.location='admin_gestion_matriculas.html'">&bull; MATRICULAS ACADEMICAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_materias.html'">&bull; MATERIAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_cursos.html'">&bull; CURSOS</div>
                 <div class="menu-item" onclick="window.location='admin_carga_academica.html'">&bull; CARGA ACADEMICA Y HORARIOS</div>
                 <div class="menu-item active" onclick="window.location='admin_reportes_y_estadisticas.html'">&bull; REPORTES Y ESTADISTICAS GLOBALES</div>
             </div>
@@ -498,16 +500,16 @@
                             <div class="legend-box">
                                 <div class="legend-title">Distribución de Faltas</div>
                                 <div class="legend-item">
-                                    <div class="legend-color-dot" style="background-color: #14B8A6;"></div>
-                                    Leve (54)
+                                    <div class="legend-color-dot" style="background-color: #E11D48;"></div>
+                                    Gravísima
                                 </div>
                                 <div class="legend-item">
                                     <div class="legend-color-dot" style="background-color: #FBBF24;"></div>
-                                    Grave (15)
+                                    Grave
                                 </div>
                                 <div class="legend-item">
-                                    <div class="legend-color-dot" style="background-color: #E11D48;"></div>
-                                    Gravísima (2)
+                                    <div class="legend-color-dot" style="background-color: #14B8A6;"></div>
+                                    Leve
                                 </div>
                             </div>
 
@@ -590,6 +592,40 @@
                         <td colspan="2">${data.total_ausencias || 0}</td>
                     </tr>
                 `;
+            }
+
+            if (data.observador) {
+                const obs = data.observador;
+                const leve = obs.leve || 0;
+                const grave = obs.grave || 0;
+                const gravisima = obs.gravisima || 0;
+                const total = leve + grave + gravisima;
+
+                const donut = document.querySelector('.donut-chart-css');
+                const legendItems = document.querySelectorAll('.legend-item');
+                if (donut && legendItems.length >= 3) {
+                    if (total === 0) {
+                        donut.style.background = 'conic-gradient(#374151 0deg 360deg)';
+                        legendItems[0].innerHTML = '<div class="legend-color-dot" style="background-color: #E11D48;"></div> Gravísima (0)';
+                        legendItems[1].innerHTML = '<div class="legend-color-dot" style="background-color: #FBBF24;"></div> Grave (0)';
+                        legendItems[2].innerHTML = '<div class="legend-color-dot" style="background-color: #14B8A6;"></div> Leve (0)';
+                    } else {
+                        const gravisimaDeg = (gravisima / total) * 360;
+                        const graveDeg = (grave / total) * 360;
+                        const leveDeg = (leve / total) * 360;
+
+                        let gradient = 'conic-gradient(';
+                        gradient += `#E11D48 0deg ${gravisimaDeg}deg, `;
+                        gradient += `#FBBF24 ${gravisimaDeg}deg ${gravisimaDeg + graveDeg}deg, `;
+                        gradient += `#14B8A6 ${gravisimaDeg + graveDeg}deg 360deg`;
+                        gradient += ')';
+                        donut.style.background = gradient;
+
+                        legendItems[0].innerHTML = `<div class="legend-color-dot" style="background-color: #E11D48;"></div> Gravísima (${gravisima})`;
+                        legendItems[1].innerHTML = `<div class="legend-color-dot" style="background-color: #FBBF24;"></div> Grave (${grave})`;
+                        legendItems[2].innerHTML = `<div class="legend-color-dot" style="background-color: #14B8A6;"></div> Leve (${leve})`;
+                    }
+                }
             }
 
         } catch (e) {
