@@ -4,21 +4,28 @@ from sqlalchemy import select
 from typing import Optional
 from app.db.database import get_db
 from app.db.models import (
-    Student, Enrollment, AcademicLoad, Schedule, Attendance,
-    GradeRecord, Activity, Observador, Subject,
-    Grade, AcademicPeriod, Teacher, User
+    Student, StudentGuardian, Guardian, Enrollment, AcademicLoad, Schedule,
+    Attendance, GradeRecord, Activity, Observador, Subject,
+    Grade, AcademicPeriod, Teacher
 )
 from app.core.security import require_rol
 
 router = APIRouter(prefix="/acudientes", tags=["Acudientes"])
 
 
-async def get_acudiente_students(db: AsyncSession, user_id: int):
-    """Devuelve los estudiantes asignados a un acudiente"""
+async def get_acudiente_guardian(db: AsyncSession, user_id: int) -> Guardian | None:
+    result = await db.execute(select(Guardian).where(Guardian.user_id == user_id))
+    return result.scalar_one_or_none()
+
+
+async def get_acudiente_students(db: AsyncSession, guardian_id: int):
+    """Devuelve los estudiantes vinculados a un guardian via student_guardian"""
     result = await db.execute(
-        select(Student).where(Student.guardian_id == user_id)
+        select(Student, StudentGuardian.parentesco)
+        .join(StudentGuardian, StudentGuardian.student_id == Student.student_id)
+        .where(StudentGuardian.guardian_id == guardian_id)
     )
-    return result.scalars().all()
+    return result.all()
 
 
 # ─────────────────────────────────────────
@@ -29,11 +36,17 @@ async def mis_estudiantes(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_rol("acudiente", "admin"))
 ):
-    students = await get_acudiente_students(db, current_user["user_id"])
-    if not students:
+    guardian = await get_acudiente_guardian(db, current_user["user_id"])
+    if not guardian:
         return []
 
-    student_ids = [s.student_id for s in students]
+    rows = await get_acudiente_students(db, guardian.guardian_id)
+    if not rows:
+        return []
+
+    student_ids = [r[0].student_id for r in rows]
+    parentesco_map = {r[0].student_id: r[1] for r in rows}
+
     enrollments_map = {}
     enr_result = await db.execute(
         select(Enrollment).where(
@@ -53,7 +66,7 @@ async def mis_estudiantes(
             grades_map[g.grade_id] = g.name
 
     output = []
-    for s in students:
+    for s, _ in rows:
         enr = enrollments_map.get(s.student_id)
         grado = grades_map.get(enr.grade_id, "Sin grado") if enr else "Sin matricula"
         output.append({
@@ -62,6 +75,7 @@ async def mis_estudiantes(
             "documento": s.document_number,
             "grado": grado,
             "grado_id": enr.grade_id if enr else None,
+            "parentesco": parentesco_map.get(s.student_id, "Tutor"),
         })
     return output
 
@@ -75,9 +89,14 @@ async def ver_notas_estudiante(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_rol("acudiente", "admin"))
 ):
-    students = await get_acudiente_students(db, current_user["user_id"])
-    if not any(s.student_id == student_id for s in students) and current_user["rol"] != "admin":
-        raise HTTPException(status_code=403, detail="Este estudiante no esta asignado a usted")
+    guardian = await get_acudiente_guardian(db, current_user["user_id"])
+    if not guardian and current_user["rol"] != "admin":
+        raise HTTPException(status_code=403, detail="Acudiente no encontrado")
+
+    if current_user["rol"] != "admin" and guardian:
+        rows = await get_acudiente_students(db, guardian.guardian_id)
+        if not any(r[0].student_id == student_id for r in rows):
+            raise HTTPException(status_code=403, detail="Este estudiante no esta asignado a usted")
 
     result = await db.execute(
         select(Enrollment).where(
@@ -113,11 +132,11 @@ async def ver_notas_estudiante(
     subject_ids = list(set(l.subject_id for l in loads_map.values()))
     teacher_ids = list(set(l.teacher_id for l in loads_map.values()))
     subjects_map = {}
+    teachers_map = {}
     if subject_ids:
         res = await db.execute(select(Subject).where(Subject.subject_id.in_(subject_ids)))
         for s in res.scalars().all():
             subjects_map[s.subject_id] = s
-    teachers_map = {}
     if teacher_ids:
         res = await db.execute(select(Teacher).where(Teacher.teacher_id.in_(teacher_ids)))
         for t in res.scalars().all():
@@ -126,11 +145,9 @@ async def ver_notas_estudiante(
     subjects_data = {}
     for r in records:
         activity = activities_map.get(r.activity_id)
-        if not activity:
-            continue
+        if not activity: continue
         load = loads_map.get(activity.academic_load_id)
-        if not load:
-            continue
+        if not load: continue
         subject = subjects_map.get(load.subject_id)
         teacher = teachers_map.get(load.teacher_id)
         nombre = subject.name if subject else "N/A"
@@ -167,58 +184,38 @@ async def ver_asistencia_estudiante(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_rol("acudiente", "admin"))
 ):
-    students = await get_acudiente_students(db, current_user["user_id"])
-    if not any(s.student_id == student_id for s in students) and current_user["rol"] != "admin":
-        raise HTTPException(status_code=403, detail="Este estudiante no esta asignado a usted")
+    guardian = await get_acudiente_guardian(db, current_user["user_id"])
+    if not guardian and current_user["rol"] != "admin":
+        raise HTTPException(status_code=403, detail="Acudiente no encontrado")
+    if current_user["rol"] != "admin" and guardian:
+        rows = await get_acudiente_students(db, guardian.guardian_id)
+        if not any(r[0].student_id == student_id for r in rows):
+            raise HTTPException(status_code=403, detail="Este estudiante no esta asignado a usted")
 
-    result = await db.execute(
-        select(Enrollment).where(Enrollment.student_id == student_id)
-    )
+    result = await db.execute(select(Enrollment).where(Enrollment.student_id == student_id))
     enrollments = result.scalars().all()
 
     registros = []
-    JUSTIFICADA_STATUSES = {"presente", "present", "excusado", "excused", "justified", "justificada"}
-    AUSENTE_STATUSES = {"ausente", "absent"}
-    TARDE_STATUSES = {"tarde", "late"}
+    JUST = {"presente", "present", "excusado", "excused", "justified", "justificada"}
+    AUS = {"ausente", "absent"}
+    TAR = {"tarde", "late"}
 
     for e in enrollments:
-        att_result = await db.execute(
-            select(Attendance).where(Attendance.enrollment_id == e.enrollment_id)
-        )
+        att_result = await db.execute(select(Attendance).where(Attendance.enrollment_id == e.enrollment_id))
         for a in att_result.scalars().all():
-            schedule = (await db.execute(
-                select(Schedule).where(Schedule.schedule_id == a.schedule_id)
-            )).scalar_one_or_none()
-            if not schedule:
-                continue
-            load = (await db.execute(
-                select(AcademicLoad).where(AcademicLoad.academic_load_id == schedule.academic_load_id)
-            )).scalar_one_or_none()
-            if not load:
-                continue
-            subject = (await db.execute(
-                select(Subject).where(Subject.subject_id == load.subject_id)
-            )).scalar_one_or_none()
-
-            status_lower = (a.attendance_status or "").strip().lower()
-            if status_lower in JUSTIFICADA_STATUSES:
-                estado_str = "justificada"
-            elif status_lower in AUSENTE_STATUSES:
-                estado_str = "sin_justificar"
-            elif status_lower in TARDE_STATUSES:
-                estado_str = "sin_justificar"
-            else:
-                estado_str = "sin_justificar"
-
+            schedule = (await db.execute(select(Schedule).where(Schedule.schedule_id == a.schedule_id))).scalar_one_or_none()
+            if not schedule: continue
+            load = (await db.execute(select(AcademicLoad).where(AcademicLoad.academic_load_id == schedule.academic_load_id))).scalar_one_or_none()
+            if not load: continue
+            subject = (await db.execute(select(Subject).where(Subject.subject_id == load.subject_id))).scalar_one_or_none()
+            sl = (a.attendance_status or "").strip().lower()
+            estado_str = "justificada" if sl in JUST else "sin_justificar"
             registros.append({
-                "id": a.attendance_id,
-                "fecha": str(a.attendance_date),
+                "id": a.attendance_id, "fecha": str(a.attendance_date),
                 "materia": subject.name if subject else "N/A",
-                "tipo_falta": a.attendance_status or "",
-                "estado": estado_str,
+                "tipo_falta": a.attendance_status or "", "estado": estado_str,
                 "observacion": a.comments or "",
             })
-
     return registros
 
 
@@ -231,13 +228,15 @@ async def ver_observador_estudiante(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_rol("acudiente", "admin"))
 ):
-    students = await get_acudiente_students(db, current_user["user_id"])
-    if not any(s.student_id == student_id for s in students) and current_user["rol"] != "admin":
-        raise HTTPException(status_code=403, detail="Este estudiante no esta asignado a usted")
+    guardian = await get_acudiente_guardian(db, current_user["user_id"])
+    if not guardian and current_user["rol"] != "admin":
+        raise HTTPException(status_code=403, detail="Acudiente no encontrado")
+    if current_user["rol"] != "admin" and guardian:
+        rows = await get_acudiente_students(db, guardian.guardian_id)
+        if not any(r[0].student_id == student_id for r in rows):
+            raise HTTPException(status_code=403, detail="Este estudiante no esta asignado a usted")
 
-    result = await db.execute(
-        select(Observador).where(Observador.estudiante_id == student_id)
-    )
+    result = await db.execute(select(Observador).where(Observador.estudiante_id == student_id))
     records = result.scalars().all()
 
     teacher_ids = list(set(r.docente_id for r in records if r.docente_id))
@@ -249,12 +248,9 @@ async def ver_observador_estudiante(
 
     output = []
     for obs in records:
-        teacher = teachers_map.get(obs.docente_id)
+        t = teachers_map.get(obs.docente_id)
         output.append({
-            "id": obs.id,
-            "tipo": obs.tipo,
-            "descripcion": obs.descripcion,
-            "fecha": str(obs.fecha),
-            "reportado_por": f"{teacher.first_name} {teacher.last_name}" if teacher else "Docente",
+            "id": obs.id, "tipo": obs.tipo, "descripcion": obs.descripcion,
+            "fecha": str(obs.fecha), "reportado_por": f"{t.first_name} {t.last_name}" if t else "Docente",
         })
     return output

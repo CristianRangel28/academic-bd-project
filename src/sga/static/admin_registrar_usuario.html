@@ -361,10 +361,11 @@
                 const result = await apiPost('/admin/usuarios', formData);
                 // Si es acudiente, asignar estudiantes seleccionados
                 if (rol === 'acudiente' && result.id) {
+                    const parentesco = document.getElementById('parentesco').value;
                     const checks = document.querySelectorAll('.estudiante-check:checked');
                     for (const chk of checks) {
                         try {
-                            await apiPatch('/admin/usuarios/' + chk.value + '/guardian', { guardian_id: result.id });
+                            await apiPatch('/admin/usuarios/' + chk.value + '/guardian', { guardian_id: result.id, parentesco: parentesco });
                         } catch (e) { console.error('Error asignando estudiante ' + chk.value + ':', e); }
                     }
                 }

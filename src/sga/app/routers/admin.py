@@ -6,10 +6,10 @@ from datetime import date, time
 from typing import Optional
 from app.db.database import get_db
 from app.db.models import (
-    User, Teacher, Student, Role, Subject,
+    User, Teacher, Student, Role, Subject, Guardian, StudentGuardian,
     Enrollment, AcademicLoad, Grade,
     AcademicPeriod, Schedule, Classroom, Campus,
-    GradeRecord, Activity, Attendance, Observador
+    GradeRecord, Activity, Attendance, Observador, AuditLog
 )
 from app.core.security import require_rol, hash_password
 
@@ -130,13 +130,11 @@ async def crear_usuario(data: dict, db: AsyncSession = Depends(get_db), _=only_a
                 raise HTTPException(status_code=400, detail=f"Ya existe un estudiante con documento {doc_type} {doc_number}")
             existing.user_id = user.user_id
         else:
-            guardian_id = data.get("guardian_id") or data.get("acudiente_id") or None
             db.add(Student(
                 user_id=user.user_id, document_type=doc_type,
                 document_number=doc_number, first_name=first_name,
                 middle_name=middle_name, last_name=last_name,
                 second_last_name=second_last_name, email=email, phone=phone, status="active",
-                guardian_id=int(guardian_id) if guardian_id else None,
             ))
     elif role_id == 3:
         dup = await db.execute(
@@ -152,6 +150,25 @@ async def crear_usuario(data: dict, db: AsyncSession = Depends(get_db), _=only_a
             existing.user_id = user.user_id
         else:
             db.add(Teacher(
+                user_id=user.user_id, document_type=doc_type,
+                document_number=doc_number, first_name=first_name,
+                middle_name=middle_name, last_name=last_name,
+                second_last_name=second_last_name, email=email, phone=phone, status="active",
+            ))
+    elif role_id == 4:
+        dup = await db.execute(
+            select(Guardian).where(
+                Guardian.document_type == doc_type,
+                Guardian.document_number == doc_number
+            )
+        )
+        existing = dup.scalar_one_or_none()
+        if existing:
+            if existing.user_id:
+                raise HTTPException(status_code=400, detail=f"Ya existe un acudiente con documento {doc_type} {doc_number}")
+            existing.user_id = user.user_id
+        else:
+            db.add(Guardian(
                 user_id=user.user_id, document_type=doc_type,
                 document_number=doc_number, first_name=first_name,
                 middle_name=middle_name, last_name=last_name,
@@ -230,26 +247,46 @@ async def eliminar_usuario(user_id: int, db: AsyncSession = Depends(get_db), _=o
 
 @router.patch("/usuarios/{user_id}/guardian")
 async def asignar_acudiente(user_id: int, data: dict, db: AsyncSession = Depends(get_db), _=only_admin):
-    """Asigna un acudiente a un estudiante"""
+    """Asigna un acudiente a un estudiante (via tabla student_guardian)"""
     guardian_id = data.get("guardian_id") or data.get("acudiente_id")
     if not guardian_id:
         raise HTTPException(status_code=422, detail="Se requiere guardian_id o acudiente_id")
-    guardian = (await db.execute(select(User).where(User.user_id == int(guardian_id)))).scalar_one_or_none()
-    if not guardian or guardian.role_id != 4:
+    guardian_user = (await db.execute(select(User).where(User.user_id == int(guardian_id)))).scalar_one_or_none()
+    if not guardian_user or guardian_user.role_id != 4:
         raise HTTPException(status_code=404, detail="Acudiente no encontrado")
+    # Buscar el perfil guardian
+    guardian = (await db.execute(select(Guardian).where(Guardian.user_id == int(guardian_id)))).scalar_one_or_none()
+    if not guardian:
+        raise HTTPException(status_code=404, detail="Perfil de acudiente no encontrado")
+    # Buscar el estudiante por su user_id
     student = (await db.execute(select(Student).where(Student.user_id == user_id))).scalar_one_or_none()
     if not student:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado")
-    student.guardian_id = int(guardian_id)
-    await db.flush()
-    return {"mensaje": "Acudiente asignado", "estudiante_id": student.student_id, "guardian_id": student.guardian_id}
+    # Ver si ya existe el vinculo
+    parentesco = data.get("parentesco", "Tutor")
+    existing = (await db.execute(
+        select(StudentGuardian).where(
+            StudentGuardian.student_id == student.student_id,
+            StudentGuardian.guardian_id == guardian.guardian_id
+        )
+    )).scalar_one_or_none()
+    if not existing:
+        db.add(StudentGuardian(
+            student_id=student.student_id,
+            guardian_id=guardian.guardian_id,
+            parentesco=parentesco
+        ))
+        await db.flush()
+    return {"mensaje": "Acudiente asignado", "estudiante_id": student.student_id, "guardian_id": guardian.guardian_id}
 
 @router.get("/acudientes")
 async def listar_acudientes(db: AsyncSession = Depends(get_db), _=only_admin):
     """Lista todos los acudientes registrados"""
-    result = await db.execute(select(User).where(User.role_id == 4, User.status == "active"))
-    users = result.scalars().all()
-    return [{"user_id": u.user_id, "nombre": full_name(u), "username": u.username} for u in users]
+    result = await db.execute(
+        select(Guardian).join(User, User.user_id == Guardian.user_id).where(User.status == "active")
+    )
+    guardians = result.scalars().all()
+    return [{"guardian_id": g.guardian_id, "user_id": g.user_id, "nombre": f"{g.first_name} {g.last_name}", "documento": g.document_number} for g in guardians]
 
 # ─────────────────────────────────────────
 # MATERIAS (subjects)
@@ -634,4 +671,35 @@ async def reportes(db: AsyncSession = Depends(get_db), _=only_admin):
         "tasa_aprobacion": round((aprobadas / total * 100), 2) if total > 0 else 0,
         "total_ausencias": total_ausencias,
         "observador": tipo_map,
+    }
+
+# ─────────────────────────────────────────
+# AUDITORIA
+# ─────────────────────────────────────────
+@router.get("/auditoria")
+async def listar_auditoria(
+    pagina: int = 1,
+    limite: int = 50,
+    db: AsyncSession = Depends(get_db),
+    _=only_admin
+):
+    offset = (pagina - 1) * limite
+    total = (await db.execute(select(func.count(AuditLog.id_audit)))).scalar() or 0
+    result = await db.execute(
+        select(AuditLog).order_by(AuditLog.operation_timestamp.desc()).offset(offset).limit(limite)
+    )
+    registros = result.scalars().all()
+    return {
+        "total": total,
+        "pagina": pagina,
+        "limite": limite,
+        "registros": [{
+            "id": r.id_audit,
+            "usuario": r.user_name or r.db_user or "Sistema",
+            "accion": r.action or r.action_type or "",
+            "tabla": r.table_name or r.affected_table or "",
+            "detalle": r.new_value or r.old_value or "",
+            "fecha": str(r.operation_timestamp) if r.operation_timestamp else "",
+            "ip": r.ip_address or "",
+        } for r in registros]
     }
