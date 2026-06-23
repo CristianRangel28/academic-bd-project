@@ -32,9 +32,9 @@ async def listar_usuarios(
     _=only_admin
 ):
     query = select(User)
-    role_map = {"admin": 1, "estudiante": 2, "docente": 3, "acudiente": 4}
-    if rol and rol in role_map:
-        query = query.where(User.role_id == role_map[rol])
+    role_map_filter = {"admin": 1, "docente": 2, "estudiante": 3, "acudiente": 4}
+    if rol and rol in role_map_filter:
+        query = query.where(User.role_id == role_map_filter[rol])
     if estado:
         if estado in ("activo", "active"):
             query = query.where(User.status == "active")
@@ -52,7 +52,7 @@ async def listar_usuarios(
 
     output = []
     for u in users:
-        role_name = {1: "admin", 2: "estudiante", 3: "docente", 4: "acudiente"}.get(u.role_id, "desconocido")
+        role_name = {1: "admin", 2: "docente", 3: "estudiante", 4: "acudiente"}.get(u.role_id, "desconocido")
         output.append({
             "id": u.user_id,
             "username": u.username,
@@ -74,7 +74,7 @@ async def crear_usuario(data: dict, db: AsyncSession = Depends(get_db), _=only_a
     email = data.get("email") or data.get("correo")
     phone = data.get("telefono") or data.get("phone") or ""
     rol_str = data.get("rol") or "estudiante"
-    role_id = {"admin": 1, "estudiante": 2, "docente": 3, "acudiente": 4}.get(rol_str, 2)
+    role_id = {"admin": 1, "docente": 2, "estudiante": 3, "acudiente": 4}.get(rol_str, 3)
     doc_type = data.get("tipo_documento") or data.get("document_type") or "CC"
     doc_number = data.get("numero_documento") or data.get("document_number") or ""
     middle_name = ""
@@ -184,7 +184,7 @@ async def obtener_usuario(user_id: int, db: AsyncSession = Depends(get_db), _=on
     u = result.scalar_one_or_none()
     if not u:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    role_name = {1: "admin", 2: "estudiante", 3: "docente", 4: "acudiente"}.get(u.role_id, "desconocido")
+    role_name = {1: "admin", 2: "docente", 3: "estudiante", 4: "acudiente"}.get(u.role_id, "desconocido")
     return {
         "id": u.user_id,
         "username": u.username,
@@ -543,8 +543,8 @@ async def listar_horarios(_=only_admin):
 async def listar_roles(db: AsyncSession = Depends(get_db), _=only_admin):
     result = await db.execute(select(Role))
     roles = result.scalars().all()
-    role_map = {"Administrativo": "admin", "Docente": "docente", "Estudiante": "estudiante", "Acudiente": "acudiente"}
-    return [{"role_id": r.role_id, "nombre": r.name, "rol": role_map.get(r.name, r.name.lower())} for r in roles]
+    role_map = {"administrativo": "admin", "docente": "docente", "estudiante": "estudiante", "acudiente": "acudiente"}
+    return [{"role_id": r.role_id, "nombre": r.name, "rol": role_map.get(r.name.strip().lower(), r.name.lower())} for r in roles]
 
 @router.get("/docentes")
 async def listar_docentes(db: AsyncSession = Depends(get_db), _=only_admin):
