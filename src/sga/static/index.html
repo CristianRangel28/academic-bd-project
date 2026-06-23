@@ -163,6 +163,9 @@
             </form>
             <div id="loginError" style="color:red;margin-top:15px;font-weight:bold;display:none;"></div>
             <script>
+                // Limpiar cualquier sesion vieja que pueda interferir
+                clearAuth();
+
                 async function handleLogin(e) {
                     e.preventDefault();
                     const btn = e.target.querySelector('.submit-btn');

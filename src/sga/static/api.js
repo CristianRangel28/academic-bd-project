@@ -36,10 +36,10 @@ async function apiRequest(endpoint, options = {}) {
     const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
 
     if (res.status === 401) {
-        if (token) {
+        if (token && !window.location.pathname.includes('login') && window.location.pathname !== '/') {
             clearAuth();
             window.location.href = '/';
-            throw new Error('Sesión expirada');
+            throw new Error('Sesion expirada');
         }
     }
 
